@@ -359,9 +359,30 @@
       const a = map.get(id);
       if (a) {
         a.setAttribute('aria-current', 'true');
-        a.scrollIntoView({ block: 'nearest', inline: 'center' });
+        revealLink(a);
       }
     });
   }, { rootMargin: '-35% 0px -60% 0px' });
   secs.forEach((s) => spy.observe(s));
+
+  // Centraliza o link ativo rolando SÓ a lista do menu.
+  // (scrollIntoView também rola a página de fora quando o site está
+  // dentro de um iframe, como no Google Sites, e isso travava a rolagem.)
+  const navList = links[0].closest('ul');
+  function revealLink(a) {
+    if (navList.scrollWidth <= navList.clientWidth) return;
+    const left = a.getBoundingClientRect().left - navList.getBoundingClientRect().left + navList.scrollLeft;
+    navList.scrollTo({ left: left - (navList.clientWidth - a.offsetWidth) / 2, behavior: 'auto' });
+  }
+
+  // Cliques no menu: rola só este documento, nunca a página que o contém.
+  const header = document.querySelector('.top');
+  links.forEach((a) => a.addEventListener('click', (e) => {
+    const target = document.getElementById(a.getAttribute('href').slice(1));
+    if (!target) return;
+    e.preventDefault();
+    const top = target.getBoundingClientRect().top + window.scrollY - header.offsetHeight + 1;
+    window.scrollTo({ top, behavior: reduce.matches ? 'auto' : 'smooth' });
+    try { history.replaceState(null, '', a.getAttribute('href')); } catch (_) {}
+  }));
 })();
