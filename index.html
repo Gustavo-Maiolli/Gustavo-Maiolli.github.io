@@ -1,0 +1,389 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Sensor de Proximidade | Feira de Projetos USF 2026.2</title>
+<meta name="description" content="Um Arduino Uno e um sensor ultrassônico HC-SR04 medem o tempo do eco e transformam a distância em luz e som. Projeto de Engenharia da Computação, USF.">
+<meta property="og:title" content="Sensor de Proximidade">
+<meta property="og:description" content="Arduino Uno e HC-SR04: a distância medida pelo eco vira luz e som.">
+<meta property="og:image" content="assets/poster-1.jpg">
+<meta name="theme-color" content="#0F1B2D">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 32 32'%3E%3Crect width='32' height='32' rx='7' fill='%230F1B2D'/%3E%3Cpath d='M12 9a9 9 0 0 1 0 14M17 6a13 13 0 0 1 0 20' fill='none' stroke='%235B8CFF' stroke-width='2.4' stroke-linecap='round'/%3E%3Ccircle cx='8' cy='16' r='2.4' fill='%23fff'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Schibsted+Grotesk:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+<a class="skip" href="#projeto">Pular para o conteúdo</a>
+
+<header class="top">
+  <div class="wrap top-in">
+    <a class="brand" href="#projeto" aria-label="Sensor de Proximidade, início">
+      <svg viewBox="0 0 32 32" width="28" height="28" aria-hidden="true"><rect width="32" height="32" rx="7" fill="currentColor"/><path d="M12 9a9 9 0 0 1 0 14M17 6a13 13 0 0 1 0 20" fill="none" stroke="#5B8CFF" stroke-width="2.4" stroke-linecap="round"/><circle cx="8" cy="16" r="2.4" fill="#fff"/></svg>
+      <span>Sensor de Proximidade</span>
+    </a>
+    <nav aria-label="Seções">
+      <ul>
+        <li><a href="#projeto">Projeto</a></li>
+        <li><a href="#funcionamento">Funcionamento</a></li>
+        <li><a href="#demonstracao">Demonstração</a></li>
+        <li><a href="#hardware">Hardware e código</a></li>
+        <li><a href="#historia">História</a></li>
+        <li><a href="#equipe">Equipe</a></li>
+        <li><a href="#faq">Perguntas</a></li>
+      </ul>
+    </nav>
+  </div>
+</header>
+
+<main>
+
+<!-- ============ PROJETO ============ -->
+<section id="projeto" class="hero">
+  <div class="wrap">
+    <div class="hero-head">
+      <h1>Sensor de Proximidade</h1>
+      <div class="hero-copy">
+        <p class="lead">Um Arduino mede quanto tempo o eco demora a voltar e transforma esse tempo em luz e som.</p>
+        <p>O sistema combina um Arduino Uno e o sensor ultrassônico HC-SR04 para monitorar a distância até um obstáculo. Em pequena escala, reproduz o princípio dos sensores de estacionamento dos carros.</p>
+        <p class="meta">Prática Profissional – Projetos de Hardware e Software<br>Engenharia da Computação, USF</p>
+      </div>
+    </div>
+
+    <figure class="scope" aria-labelledby="scope-cap">
+      <div class="scope-stage">
+        <canvas id="scope" role="img" aria-label="Simulação do sensor: o pulso sai do sensor, bate no obstáculo e volta como eco. Abaixo, os sinais Trigger e Echo."></canvas>
+      </div>
+
+      <div class="scope-controls">
+        <div class="field">
+          <label for="dist">Distância do obstáculo</label>
+          <input id="dist" type="range" min="2" max="50" step="1" value="24">
+          <span class="hint">Arraste o obstáculo na simulação ou use as setas do teclado.</span>
+        </div>
+        <button id="sound" class="btn" type="button" aria-pressed="false">Ativar som do buzzer</button>
+      </div>
+
+      <div class="readout" aria-live="polite">
+        <div class="r-main">
+          <span class="r-num" id="out-d">24</span><span class="r-unit">cm</span>
+        </div>
+        <dl class="r-side">
+          <div><dt>Tempo do eco</dt><dd id="out-t">1399 µs</dd></div>
+          <div><dt>Conta feita pelo Arduino</dt><dd id="out-f" class="mono">D = (0,0343 × 1399) / 2</dd></div>
+        </dl>
+      </div>
+
+      <ul class="leds" aria-label="Estado dos alertas">
+        <li data-led="green"><i class="led" aria-hidden="true"></i><b>LED verde</b><span>21 cm ou mais</span></li>
+        <li data-led="amber"><i class="led" aria-hidden="true"></i><b>LED amarelo</b><span>11 a 20 cm</span></li>
+        <li data-led="red"><i class="led" aria-hidden="true"></i><b>LED vermelho e buzzer</b><span>até 10 cm</span></li>
+      </ul>
+
+      <figcaption id="scope-cap">Simulação com as mesmas faixas do código do protótipo. As ondas animadas não estão em escala de tempo real: o som leva cerca de 1,4 ms para fazer 24 cm de ida e volta.</figcaption>
+    </figure>
+  </div>
+</section>
+
+<!-- ============ FUNCIONAMENTO ============ -->
+<section id="funcionamento" class="sec">
+  <div class="wrap">
+    <h2>Como o eco vira distância</h2>
+    <p class="intro">O transdutor do sensor usa o efeito piezoelétrico: cristais especiais convertem pulsos elétricos em vibração mecânica (o som) e, no caminho inverso, transformam o eco que volta em sinal elétrico que o Arduino consegue processar.</p>
+
+    <div class="split">
+      <ol class="steps">
+        <li>
+          <h3>Disparo</h3>
+          <p>O Arduino envia um sinal de 10 microssegundos ao pino Trigger e manda o sensor iniciar a leitura.</p>
+        </li>
+        <li>
+          <h3>Emissão sonora</h3>
+          <p>O sensor lança uma rajada rápida de ultrassom de 40 kHz no ar.</p>
+        </li>
+        <li>
+          <h3>Início da cronometragem</h3>
+          <p>No instante da emissão, o pino Echo sobe para nível alto (5 V) e o Arduino começa a contar o tempo com <code>pulseIn()</code>.</p>
+        </li>
+        <li>
+          <h3>Reflexão</h3>
+          <p>A onda viaja, encontra o obstáculo e volta em direção ao sensor.</p>
+        </li>
+        <li>
+          <h3>Fim da cronometragem</h3>
+          <p>Quando o receptor detecta o som de volta, o Echo cai para nível baixo (0 V) e o cronômetro para.</p>
+        </li>
+        <li>
+          <h3>Cálculo</h3>
+          <p>O microcontrolador multiplica o tempo de ida e volta pela velocidade do som e divide por dois.</p>
+        </li>
+      </ol>
+
+      <div class="side">
+        <figure class="plate">
+          <img src="assets/diagrama-eco.jpg" width="1024" height="559" loading="lazy" alt="Diagrama do Arduino ligado ao HC-SR04. Um pulso de 40 kHz sai (ida, em azul), bate em um bloco de madeira e volta (eco, em vermelho). Acima, o gráfico de tempo com Trigger, pulso de emissão, tempo de viagem e fim do pulso.">
+          <figcaption>Do Trigger ao eco: o tempo de viagem T é o que o Arduino mede.</figcaption>
+        </figure>
+        <div class="formula">
+          <p class="f-eq" aria-label="D igual a v vezes t, dividido por 2">D = (v × t) / 2</p>
+          <p>v ≈ 343 m/s no ar a 20 °C. t é o tempo de ida e volta. Dividimos por dois porque o som percorre o caminho duas vezes, e só a ida até o objeto interessa.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ DEMONSTRAÇÃO ============ -->
+<section id="demonstracao" class="sec alt">
+  <div class="wrap aside">
+    <div class="lhs">
+      <h2>Em funcionamento</h2>
+      <p class="intro">O circuito foi montado em protoboard, sem solda. No primeiro vídeo ele vai em cima de um carrinho de brinquedo. No segundo, a bancada mostra os LEDs mudando enquanto o Serial Monitor imprime as leituras.</p>
+    </div>
+
+    <div class="rhs videos">
+      <figure>
+        <video controls playsinline preload="metadata" poster="assets/poster-1.jpg" data-v>
+          <source src="assets/video-1.mp4" type="video/mp4">
+          Seu navegador não reproduz este vídeo.
+        </video>
+        <figcaption><b>Protótipo no carrinho.</b> O sensor aponta para a frente e os LEDs indicam a proximidade do obstáculo.</figcaption>
+      </figure>
+      <figure>
+        <video controls playsinline preload="metadata" poster="assets/poster-2.jpg" data-v>
+          <source src="assets/video-2.mp4" type="video/mp4">
+          Seu navegador não reproduz este vídeo.
+        </video>
+        <figcaption><b>Bancada e Serial Monitor.</b> A mão se aproxima do sensor, o LED vermelho acende e as distâncias aparecem na tela.</figcaption>
+      </figure>
+    </div>
+  </div>
+</section>
+
+<!-- ============ HARDWARE E CÓDIGO ============ -->
+<section id="hardware" class="sec">
+  <div class="wrap">
+    <h2>Hardware e código</h2>
+
+    <div class="split split-hw">
+      <div>
+        <table class="pins">
+          <caption>Componentes e ligações no Arduino Uno</caption>
+          <thead><tr><th scope="col">Componente</th><th scope="col">Função</th><th scope="col">Pino</th></tr></thead>
+          <tbody>
+            <tr><th scope="row">Arduino Uno R3</th><td>Processa os dados e controla o sistema.</td><td class="mono">–</td></tr>
+            <tr><th scope="row">Sensor HC-SR04</th><td>Mede a distância emitindo e recebendo ultrassom.</td><td class="mono">Trigger D7<br>Echo D8</td></tr>
+            <tr><th scope="row">LED verde</th><td>Obstáculo longe, 21 cm ou mais.</td><td class="mono">D13</td></tr>
+            <tr><th scope="row">LED amarelo</th><td>Obstáculo a 11 até 20 cm.</td><td class="mono">D12</td></tr>
+            <tr><th scope="row">LED vermelho</th><td>Obstáculo a até 10 cm.</td><td class="mono">D11</td></tr>
+            <tr><th scope="row">Buzzer</th><td>Alerta sonoro junto do LED vermelho.</td><td class="mono">D2</td></tr>
+            <tr><th scope="row">Protoboard e resistores</th><td>Montagem e organização do circuito.</td><td class="mono">–</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <figure class="plate">
+        <img src="assets/circuito.jpg" width="1041" height="745" loading="lazy" alt="Esquema do circuito: Arduino Uno ligado a uma protoboard com três LEDs (verde, amarelo e vermelho) com resistores, o sensor HC-SR04 e um buzzer.">
+        <figcaption>Esquema do circuito montado na protoboard.</figcaption>
+      </figure>
+    </div>
+
+    <div class="code-block">
+      <div class="code-head">
+        <h3>Sketch do Arduino</h3>
+        <p>O código lê o tempo do eco, converte em centímetros e liga um alerta por faixa. A leitura é arredondada para baixo em <code>int leitura_cm</code>.</p>
+      </div>
+      <pre class="code" tabindex="0"><code id="code">#include &lt;Ultrasonic.h&gt;
+
+#define pino_trigger 7
+#define pino_echo 8
+
+int led_verde = 13;
+int led_amarelo = 12;
+int led_vermelho = 11;
+int buzzer = 2;
+
+Ultrasonic ultrasonic(pino_trigger, pino_echo);
+
+void setup()
+{
+    pinMode(led_verde, OUTPUT);
+    pinMode(led_amarelo, OUTPUT);
+    pinMode(led_vermelho, OUTPUT);
+    pinMode(buzzer, OUTPUT);
+
+    Serial.begin(9600);
+    Serial.println("Inicializando a leitura do sensor ultrassônico HC-SR04...");
+}
+
+void loop()
+{
+    float cm, pol;
+    long tempo = ultrasonic.timing();
+
+    cm = ultrasonic.convert(tempo, Ultrasonic::CM);
+
+    Serial.print("Distancia em cm --&gt; ");
+    Serial.print(cm);
+
+    delay(1000);
+
+    int leitura_cm = cm;
+
+    if (leitura_cm &lt;= 10)
+    {
+        digitalWrite(buzzer, HIGH);
+        digitalWrite(led_vermelho, HIGH);
+        digitalWrite(led_verde, LOW);
+        digitalWrite(led_amarelo, LOW);
+    }
+
+    if (leitura_cm &gt;= 11)
+    {
+        digitalWrite(led_amarelo, HIGH);
+        digitalWrite(led_verde, LOW);
+        digitalWrite(led_vermelho, LOW);
+        digitalWrite(buzzer, LOW);
+    }
+    if (leitura_cm &gt;= 21)
+    {
+        digitalWrite(led_verde, HIGH);
+        digitalWrite(led_amarelo, LOW);
+        digitalWrite(led_vermelho, LOW);
+        digitalWrite(buzzer, LOW);
+    }
+}</code></pre>
+    </div>
+  </div>
+</section>
+
+<!-- ============ TESTES E APLICAÇÕES ============ -->
+<section id="testes" class="sec alt">
+  <div class="wrap two-col">
+    <div>
+      <h2>Montagem e testes</h2>
+      <p>A montagem em protoboard permite conectar os componentes sem soldagem. Nessa etapa testamos a precisão das medições e o funcionamento dos alertas visuais e sonoros.</p>
+      <p>Durante os experimentos, superfícies inclinadas ou irregulares causaram pequenas variações na leitura, por causa da forma como refletem as ondas ultrassônicas. Mesmo assim, o sistema deu resultados consistentes e atendeu aos objetivos do projeto.</p>
+    </div>
+    <div>
+      <h2>Onde mais se usa</h2>
+      <p>O protótipo usa o mesmo princípio físico dos sensores de estacionamento dos automóveis. Sensores ultrassônicos também aparecem em:</p>
+      <ul class="plain">
+        <li>medição de nível em reservatórios e tanques industriais;</li>
+        <li>navegação e prevenção de colisões em robôs móveis;</li>
+        <li>detecção de obstáculos em drones;</li>
+        <li>sistemas de automação e monitoramento.</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ============ HISTÓRIA ============ -->
+<section id="historia" class="sec">
+  <div class="wrap aside">
+    <div class="lhs">
+      <h2>Do problema ao protótipo</h2>
+      <p class="intro">O projeto nasceu na disciplina de Prática Profissional, com o desafio de unir eletrônica, programação e Física em um sistema que funcione de verdade.</p>
+    </div>
+
+    <ol class="rhs timeline">
+      <li>
+        <h3>Proposta</h3>
+        <p>Desenvolver um sistema de monitoramento de distância em tempo real, usando um sensor ultrassônico integrado a um Arduino, e mostrar a engenharia no cotidiano.</p>
+      </li>
+      <li>
+        <h3>Pesquisa</h3>
+        <p>Estudo do ultrassom e do datasheet do HC-SR04, com apoio do manual do projeto e de <em>Fundamentos de Física</em>. As consultas foram feitas em maio de 2026.</p>
+      </li>
+      <li>
+        <h3>Montagem</h3>
+        <p>Circuito em protoboard com Arduino Uno, sensor, três LEDs, resistores e buzzer, desenhado antes em esquema e depois montado na bancada.</p>
+      </li>
+      <li>
+        <h3>Testes</h3>
+        <p>Ajuste das faixas de alerta e conferência das leituras no Serial Monitor, inclusive com superfícies inclinadas.</p>
+      </li>
+      <li>
+        <h3>Feira de Projetos</h3>
+        <p>Apresentação do protótipo na Feira de Projetos das Engenharias, edição 2026.2, com o tema <em>USF 50 anos: Engenharias em ação, Ideias em transformação</em>.</p>
+      </li>
+    </ol>
+  </div>
+</section>
+
+<!-- ============ EQUIPE ============ -->
+<section id="equipe" class="sec alt">
+  <div class="wrap aside">
+    <div class="lhs">
+      <h2>Equipe</h2>
+      <p class="intro">Seis estudantes de Engenharia da Computação da USF.</p>
+    </div>
+    <ul class="rhs team">
+      <li><span class="n">Leonardo M. Kobayashi</span><span class="ra">RA 202600591</span></li>
+      <li><span class="n">Lucas Hasmann Tavares</span><span class="ra">RA 202602575</span></li>
+      <li><span class="n">Matheus Silva Oliveira</span><span class="ra">RA 202610366</span></li>
+      <li><span class="n">João Gabriel Dias Reis</span><span class="ra">RA 202630561</span></li>
+      <li><span class="n">Gustavo Maiolli Turela</span><span class="ra">RA 202605549</span></li>
+      <li><span class="n">Thieder Augusto Cassalho</span><span class="ra">RA 202609737</span></li>
+    </ul>
+  </div>
+</section>
+
+<!-- ============ FAQ ============ -->
+<section id="faq" class="sec">
+  <div class="wrap aside">
+    <div class="lhs">
+      <h2>Perguntas frequentes</h2>
+      <p class="intro">Respostas curtas sobre como o protótipo mede e avisa.</p>
+    </div>
+    <div class="rhs faq">
+      <details open>
+        <summary>Como o sensor sabe a que distância está o obstáculo?</summary>
+        <p>Ele emite ultrassom e mede quanto tempo o eco leva para voltar. Com esse tempo e a velocidade do som, o Arduino calcula a distância com D = (v × t) / 2.</p>
+      </details>
+      <details>
+        <summary>Por que a conta divide por dois?</summary>
+        <p>O tempo medido é de ida e volta. Como a distância até o objeto é só a ida, o resultado é dividido por dois.</p>
+      </details>
+      <details>
+        <summary>Por que usar 343 m/s?</summary>
+        <p>É a velocidade aproximada do som no ar a 20 °C. Com temperatura diferente o valor muda um pouco, e a leitura muda junto.</p>
+      </details>
+      <details>
+        <summary>O que cada cor de LED significa?</summary>
+        <p>Verde: obstáculo a 21 cm ou mais. Amarelo: de 11 a 20 cm. Vermelho: até 10 cm, e nesse caso o buzzer também apita.</p>
+      </details>
+      <details>
+        <summary>A leitura é sempre exata?</summary>
+        <p>Quase sempre. Em superfícies inclinadas ou irregulares, o eco reflete de um jeito diferente e a leitura pode variar um pouco. Nos nossos testes os resultados foram consistentes.</p>
+      </details>
+      <details>
+        <summary>Para que serve esse tipo de sistema?</summary>
+        <p>Para dar segurança em manobras de estacionamento, e também em robôs, drones, tanques industriais e sistemas de automação.</p>
+      </details>
+    </div>
+  </div>
+</section>
+
+</main>
+
+<footer class="foot">
+  <div class="wrap foot-in">
+    <div>
+      <h2>Referências</h2>
+      <ol>
+        <li>MANUAL DO PROJETO PPHWeSW 2026. [S.l.: s.n.], 2026. Acesso em 23/05/2026.</li>
+        <li>AOSONG ELECTRONICS CO., LTD. <em>HC-SR04 Ultrasonic Sensor: datasheet</em>. Guangzhou: Aosong Electronics, [s.d.]. Acesso em 23/05/2026.</li>
+        <li>HALLIDAY, David; RESNICK, Robert; WALKER, Jearl. <em>Fundamentos de física: gravitação, ondas e termodinâmica</em>. 10. ed. Rio de Janeiro: LTC, 2016. v. 2. Acesso em 25/05/2026.</li>
+      </ol>
+    </div>
+    <p class="fine">Feira de Projetos das Engenharias USF 2026.2<br>
+      <a href="https://usf-projects.github.io/feira-de-projetos-2026/">Site da feira</a></p>
+  </div>
+</footer>
+
+<script src="app.js"></script>
+</body>
+</html>
